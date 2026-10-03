@@ -44,17 +44,21 @@ and test suites that never send keep working.
 
 ## Several channels or mail types
 
-Add a mailer to `config/mail.php` for each extra channel or mail type. A key
-you set there overrides `config/helo.php`. Set `channel_id` to `null` to send
-without a channel.
+Add a mailer to `config/mail.php` for each extra channel or mail type.
+Settings you put there override `config/helo.php`. Each Helo API key belongs
+to one channel, so a mailer for another channel needs that channel's key.
 
 ```php
 'helo-newsletter' => [
     'transport' => 'helo',
+    'key' => env('HELO_NEWSLETTER_API_KEY'),
     'channel_id' => env('HELO_NEWSLETTER_CHANNEL_ID'),
     'mail_type' => 'broadcast',
 ],
 ```
+
+To send broadcast mail through your main channel, leave out `key` and
+`channel_id` and set only `mail_type`.
 
 ```php
 Mail::mailer('helo-newsletter')->to($user)->send(new Newsletter);
@@ -204,11 +208,12 @@ foreach (Helo::suppressions()->list(mailType: 'broadcast')->lazy() as $suppressi
 }
 ```
 
-**Other channels.** `Helo::forChannel($id)` returns a client for another
-channel, for apps that send for many customers.
+**Other channels.** `Helo::forChannel($id, $key)` returns a client for
+another channel, for apps that send for many customers. Pass that channel's
+API key; without one, the client keeps the default key.
 
 ```php
-Helo::forChannel($tenant->helo_channel_id)->suppressions()->list();
+Helo::forChannel($tenant->helo_channel_id, $tenant->helo_api_key)->suppressions()->list();
 ```
 
 Suppressions, broadcast lists, and new webhooks need a channel ID, even

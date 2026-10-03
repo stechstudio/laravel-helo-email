@@ -28,11 +28,15 @@ class HeloClient
         return $this->channelId;
     }
 
-    /** A client for another channel, for platforms that send for many customers. */
-    public function forChannel(?string $channelId): static
+    /**
+     * A client for another channel, for platforms that send for many customers.
+     * Each Helo API key belongs to one channel, so pass that channel's key.
+     */
+    public function forChannel(?string $channelId, ?string $key = null): static
     {
         $client = clone $this;
         $client->channelId = $channelId;
+        $client->key = $key ?? $this->key;
 
         return $client;
     }

@@ -129,6 +129,19 @@ class HeloClientTest extends TestCase
         $this->assertNotSame($client, $other);
     }
 
+    public function testForChannelCanUseThatChannelsKey(): void
+    {
+        // Each Helo API key belongs to one channel, so another channel needs its own key.
+        Http::fake(['api.helohq.com/*' => Http::response(['totalCount' => 0, 'results' => []])]);
+        $client = new HeloClient('api-key', 'channel-a');
+
+        $client->forChannel('channel-b', 'channel-b-key')->suppressions()->list();
+        $client->forChannel('channel-c')->suppressions()->list();
+
+        Http::assertSent(fn ($request) => $request['channelId'] === 'channel-b' && $request->hasHeader('Authorization', 'Bearer channel-b-key'));
+        Http::assertSent(fn ($request) => $request['channelId'] === 'channel-c' && $request->hasHeader('Authorization', 'Bearer api-key'));
+    }
+
     public function testTheFacadeResolvesTheConfiguredSingleton(): void
     {
         $this->assertInstanceOf(HeloClient::class, Helo::getFacadeRoot());
