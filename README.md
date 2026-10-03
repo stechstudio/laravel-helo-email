@@ -18,8 +18,9 @@ HELO_API_KEY=...
 HELO_CHANNEL_ID=...
 ```
 
-Each Helo API key belongs to one channel, so sending works without
-`HELO_CHANNEL_ID`. Set it to your key's channel anyway: Helo requires a channel
+A Helo API key covers either all channels or one. With a key for all channels,
+`HELO_CHANNEL_ID` picks the channel to send through. With a key for one
+channel, sending works without it, but set it anyway: Helo requires a channel
 ID for suppressions, broadcast lists, and new webhooks.
 
 You don't need to change `config/mail.php`. The package adds a `helo` mailer
@@ -45,8 +46,9 @@ and test suites that never send keep working.
 ## Several channels or mail types
 
 Add a mailer to `config/mail.php` for each extra channel or mail type.
-Settings you put there override `config/helo.php`. Each Helo API key belongs
-to one channel, so a mailer for another channel needs that channel's key.
+Settings you put there override `config/helo.php`. A key limited to one
+channel can't reach another, so a mailer for another channel needs a key for
+it, unless your main key covers all channels.
 
 ```php
 'helo-newsletter' => [
@@ -209,15 +211,16 @@ foreach (Helo::suppressions()->list(mailType: 'broadcast')->lazy() as $suppressi
 ```
 
 **Other channels.** `Helo::forChannel($id, $key)` returns a client for
-another channel, for apps that send for many customers. Pass that channel's
-API key; without one, the client keeps the default key.
+another channel, for apps that send for many customers. If your key covers
+all channels, the channel ID is enough. If each channel has its own key, pass
+that key too.
 
 ```php
 Helo::forChannel($tenant->helo_channel_id, $tenant->helo_api_key)->suppressions()->list();
 ```
 
-Suppressions, broadcast lists, and new webhooks need a channel ID, even
-though your key already belongs to one channel. Pass `channelId:`, use
+Suppressions, broadcast lists, and new webhooks need a channel ID, even with
+a key for one channel. Pass `channelId:`, use
 `forChannel()`, or set `HELO_CHANNEL_ID`.
 
 **New parameters.** Methods that take named parameters also accept `extra:`,

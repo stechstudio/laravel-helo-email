@@ -30,7 +30,7 @@ class HeloClient
 
     /**
      * A client for another channel, for platforms that send for many customers.
-     * Each Helo API key belongs to one channel, so pass that channel's key.
+     * Pass that channel's key when the default key is limited to one channel.
      */
     public function forChannel(?string $channelId, ?string $key = null): static
     {
