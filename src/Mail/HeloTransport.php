@@ -23,7 +23,7 @@ class HeloTransport extends AbstractTransport
     protected const SKIPPED_HEADERS = [
         'from', 'to', 'cc', 'bcc', 'reply-to', 'sender', 'subject', 'content-type',
         'content-transfer-encoding', 'mime-version', 'x-helo-idempotency-key',
-        'x-helo-trackopens', 'x-helo-tracklinks', 'x-helo-result',
+        'x-helo-trackopens', 'x-helo-tracklinks',
     ];
 
     public function __construct(protected HeloClient $client, protected string $mailType = 'transactional')
@@ -57,10 +57,9 @@ class HeloTransport extends AbstractTransport
 
         $message->setMessageId($result->messageId);
 
-        // Added after the API call, so it never goes out on the wire. Written on
-        // the original: converting a plain MIME message produces a new Email.
-        $original->getHeaders()->remove(HeloResult::HEADER);
-        $original->getHeaders()->addTextHeader(HeloResult::HEADER, json_encode($result->toArray(), JSON_THROW_ON_ERROR));
+        // Kept on the original: converting a plain MIME message produces a new
+        // Email, and HeloResult::from() reads the SentMessage's original.
+        $result->attachTo($original);
     }
 
     /** @return array<string, mixed> */
@@ -98,7 +97,7 @@ class HeloTransport extends AbstractTransport
             'text' => $this->body($email->getTextBody()),
         ];
 
-        foreach ($email->getAttachments() as $attachment) {
+        foreach ($email->getAttachments() as $index => $attachment) {
             $item = [
                 'fileName' => $attachment->getFilename() ?? 'attachment',
                 'contentType' => $attachment->getMediaType().'/'.$attachment->getMediaSubtype(),
@@ -107,6 +106,18 @@ class HeloTransport extends AbstractTransport
             ];
             if ($attachment->getDisposition() === 'inline') {
                 $item['contentId'] = $attachment->getContentId();
+
+                // Symfony makes up a random Content-ID, so a retry that rebuilds
+                // the email would send a different request and Helo would reject
+                // its idempotency key. Derive one from the image instead, and keep
+                // any ID the app set itself.
+                if (str_ends_with($item['contentId'], '@symfony')) {
+                    $stable = substr(hash('sha256', $index.'|'.$item['fileName'].'|'.$item['content']), 0, 32).'@helo';
+                    if ($payload['html'] !== null) {
+                        $payload['html'] = str_replace('cid:'.$item['contentId'], 'cid:'.$stable, $payload['html']);
+                    }
+                    $item['contentId'] = $stable;
+                }
             }
             $payload['attachments'][] = $item;
         }

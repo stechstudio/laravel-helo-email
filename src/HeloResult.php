@@ -5,14 +5,17 @@ namespace STS\HeloEmail;
 use Illuminate\Mail\SentMessage as LaravelSentMessage;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mime\Message;
+use WeakMap;
 
 /**
- * What Helo said about one send. The transport leaves it on the sent message
- * after the API call, so it never goes out on the wire.
+ * What Helo said about one send. The transport records it against the exact
+ * message object it sent, in memory, so it never goes out on the wire and a
+ * later send of a copy can't inherit it.
  */
 final class HeloResult
 {
-    public const HEADER = 'X-Helo-Result';
+    /** @var WeakMap<Message, self>|null */
+    private static ?WeakMap $results = null;
 
     /** @param list<string> $suppressions recipients Helo dropped because they were suppressed */
     public function __construct(
@@ -46,15 +49,14 @@ final class HeloResult
             default => $source,
         };
 
-        $header = $message instanceof Message ? $message->getHeaders()->get(self::HEADER) : null;
+        return $message instanceof Message ? self::$results[$message] ?? null : null;
+    }
 
-        if ($header === null) {
-            return null;
-        }
-
-        $data = json_decode($header->getBodyAsString(), true, flags: JSON_THROW_ON_ERROR);
-
-        return self::fromResponse(new Response(is_array($data) ? $data : []));
+    /** Record this as the result of sending $message. */
+    public function attachTo(Message $message): void
+    {
+        self::$results ??= new WeakMap;
+        self::$results[$message] = $this;
     }
 
     public function isDelayed(): bool

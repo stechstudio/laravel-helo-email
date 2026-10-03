@@ -98,7 +98,8 @@ class HeloClient
             throw HeloException::fromResponse($response);
         }
 
-        if ($response->status() === 204 || trim($response->body()) === '') {
+        // Helo answers only its deletes with 204 and no body.
+        if ($response->status() === 204) {
             return [];
         }
 

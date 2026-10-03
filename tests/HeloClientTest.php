@@ -83,6 +83,23 @@ class HeloClientTest extends TestCase
         (new HeloClient('api-key'))->request('GET', '/channels');
     }
 
+    public function testRejectsAnEmptySuccessResponse(): void
+    {
+        // Only Helo's 204s have no body; an empty 200 is not a success.
+        foreach (['', '  '] as $body) {
+            Http::swap(new \Illuminate\Http\Client\Factory);
+            Http::preventStrayRequests();
+            Http::fake(['api.helohq.com/*' => Http::response($body, 200)]);
+
+            try {
+                (new HeloClient('api-key'))->request('POST', '/channels', json: ['name' => 'x']);
+                $this->fail('Expected a HeloException for an empty 200.');
+            } catch (HeloException $exception) {
+                $this->assertSame('Helo returned a response that is not JSON.', $exception->getMessage());
+            }
+        }
+    }
+
     public function testReturnsAnEmptyArrayForNoContent(): void
     {
         Http::fake(['api.helohq.com/*' => Http::response(null, 204)]);

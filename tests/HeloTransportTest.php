@@ -10,10 +10,13 @@ use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\Header\MetadataHeader;
 use Symfony\Component\Mailer\Header\TagHeader;
+use Symfony\Component\Mailer\Transport\FailoverTransport;
+use Symfony\Component\Mailer\Transport\NullTransport;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\Header\Headers;
 use Symfony\Component\Mime\Message;
+use Symfony\Component\Mime\Part\DataPart;
 use Symfony\Component\Mime\Part\TextPart;
 
 class HeloTransportTest extends TestCase
@@ -65,7 +68,7 @@ class HeloTransportTest extends TestCase
             $this->assertSame('keep', $data['headers']['X-Custom']);
             $this->assertArrayNotHasKey('Bcc', $data['headers']);
             $this->assertArrayNotHasKey('X-Metadata-order_id', $data['headers']);
-            $this->assertArrayNotHasKey(HeloResult::HEADER, $data['headers']);
+            $this->assertArrayNotHasKey('X-Helo-Result', $data['headers']);
 
             return $request->url() === 'https://api.helohq.com/send/transactional'
                 && $request->hasHeader('Authorization', 'Bearer api-key')
@@ -93,6 +96,74 @@ class HeloTransportTest extends TestCase
         $sent = $this->transport()->send($message);
 
         $this->assertSame('helo-id', HeloResult::from($sent)?->messageId);
+    }
+
+    public function testAResentMessageCarriesNoEarlierResult(): void
+    {
+        Http::fakeSequence('api.helohq.com/*')
+            ->push(['status' => 'accepted', 'messageId' => 'first-id', 'suppressions' => ['bcc@example.com']])
+            ->push(['detail' => 'Unavailable'], 503);
+        $first = $this->transport()->send($this->email());
+
+        // Send the same message again; Helo fails and the fallback takes it.
+        $fallback = (new FailoverTransport([$this->transport(), new NullTransport]))->send($first->getOriginalMessage());
+
+        $this->assertStringNotContainsString('X-Helo-Result', $fallback->toString());
+        $this->assertNull(HeloResult::from($fallback));
+        $this->assertSame('first-id', HeloResult::from($first)?->messageId);
+    }
+
+    public function testRetriesOfAnInlineImageEmailSendTheSameRequest(): void
+    {
+        $this->accepted();
+
+        foreach ([1, 2] as $attempt) {
+            // A retry rebuilds the email from the same content.
+            $email = $this->email()->html('<img src="cid:logo.png">')->embed('image bytes', 'logo.png', 'image/png');
+            $email->getHeaders()->addTextHeader('X-Helo-Idempotency-Key', 'order-42');
+            $this->transport()->send($email);
+        }
+
+        $this->assertCount(1, Http::recorded()->map(fn ($pair) => $pair[0]->body())->unique());
+    }
+
+    public function testRetriesOfALaravelEmbeddedImageSendTheSameRequest(): void
+    {
+        $this->accepted();
+
+        foreach ([1, 2] as $attempt) {
+            // Laravel's embed() and embedData() put Symfony's random Content-ID in the HTML.
+            $part = (new DataPart('image bytes', 'logo.png', 'image/png'))->asInline();
+            $email = $this->email()->addPart($part)->html('<img src="cid:'.$part->getContentId().'">');
+            $email->getHeaders()->addTextHeader('X-Helo-Idempotency-Key', 'order-42');
+            $this->transport()->send($email);
+        }
+
+        $bodies = Http::recorded()->map(fn ($pair) => $pair[0]->body())->unique();
+        $this->assertCount(1, $bodies);
+        $request = json_decode($bodies->first(), true);
+        $this->assertSame('<img src="cid:'.$request['attachments'][0]['contentId'].'">', $request['html']);
+    }
+
+    public function testSendsNoHtmlForATextEmailWithAnInlinePart(): void
+    {
+        $this->accepted();
+
+        $this->transport()->send((new Email)->from('sender@example.com')->to('to@example.com')->text('Hi')
+            ->addPart((new DataPart('image bytes', 'logo.png', 'image/png'))->asInline()));
+
+        Http::assertSent(fn ($request) => ! array_key_exists('html', $request->data()));
+    }
+
+    public function testKeepsAnExplicitInlineContentId(): void
+    {
+        $this->accepted();
+        $email = $this->email()->html('<img src="cid:logo@example.com">')
+            ->addPart((new DataPart('image bytes', 'logo.png', 'image/png'))->asInline()->setContentId('logo@example.com'));
+
+        $this->transport()->send($email);
+
+        Http::assertSent(fn ($request) => $request['attachments'][0]['contentId'] === 'logo@example.com');
     }
 
     public function testPreservesInlineContentIdsAndStreamBodies(): void

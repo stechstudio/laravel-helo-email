@@ -38,7 +38,7 @@ class HeloResultTest extends TestCase
     public function testReadsTheResultBackFromASentMessage(): void
     {
         $email = (new Email)->from('sender@example.com')->to('a@example.com')->text('Hi');
-        $email->getHeaders()->addTextHeader(HeloResult::HEADER, json_encode(['messageId' => 'm-1', 'status' => 'accepted', 'suppressions' => []]));
+        (new HeloResult('m-1', 'accepted'))->attachTo($email);
         $sent = new SentMessage($email, new Envelope(new Address('sender@example.com'), [new Address('a@example.com')]));
 
         $this->assertSame('m-1', HeloResult::from($sent)?->messageId);
@@ -49,6 +49,15 @@ class HeloResultTest extends TestCase
     public function testReturnsNullForMailThatDidNotGoThroughHelo(): void
     {
         $email = (new Email)->from('sender@example.com')->to('a@example.com')->text('Hi');
+
+        $this->assertNull(HeloResult::from($email));
+    }
+
+    public function testIgnoresAResultHeaderOnTheMessage(): void
+    {
+        // A header can be copied onto later sends; only the transport's own record counts.
+        $email = (new Email)->from('sender@example.com')->to('a@example.com')->text('Hi');
+        $email->getHeaders()->addTextHeader('X-Helo-Result', json_encode(['messageId' => 'm-1', 'status' => 'accepted', 'suppressions' => []]));
 
         $this->assertNull(HeloResult::from($email));
     }

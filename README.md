@@ -79,6 +79,10 @@ unique to the message, such as `order-42-receipt`. Helo sends a message with a
 given key only once, so this is the only safe way to retry a send that may
 have gone through.
 
+A retry must send exactly the same request, or Helo rejects the key. The
+transport leaves out the `Message-ID` header and gives inline images stable
+IDs, so rebuilding the same email gives the same request.
+
 **Broadcast mail.** Set `mail_type` to `broadcast` for marketing and bulk mail.
 Helo adds its own unsubscribe link and `List-Unsubscribe` headers to every
 broadcast message, and you can't point them at your own page. Put
