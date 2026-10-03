@@ -4,6 +4,11 @@ namespace STS\HeloEmail;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use STS\HeloEmail\Resources\Broadcasts;
+use STS\HeloEmail\Resources\Channels;
+use STS\HeloEmail\Resources\Domains;
+use STS\HeloEmail\Resources\Suppressions;
+use STS\HeloEmail\Resources\Webhooks;
 
 class HeloClient
 {
@@ -27,6 +32,31 @@ class HeloClient
         $client->channelId = $channelId;
 
         return $client;
+    }
+
+    public function suppressions(): Suppressions
+    {
+        return new Suppressions($this);
+    }
+
+    public function webhooks(): Webhooks
+    {
+        return new Webhooks($this);
+    }
+
+    public function channels(): Channels
+    {
+        return new Channels($this);
+    }
+
+    public function domains(): Domains
+    {
+        return new Domains($this);
+    }
+
+    public function broadcasts(): Broadcasts
+    {
+        return new Broadcasts($this);
     }
 
     /**
