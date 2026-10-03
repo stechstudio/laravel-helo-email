@@ -13,6 +13,8 @@ use STS\HeloEmail\HeloClient;
  * @method static \STS\HeloEmail\Resources\Channels channels()
  * @method static \STS\HeloEmail\Resources\Domains domains()
  * @method static \STS\HeloEmail\Resources\Broadcasts broadcasts()
+ * @method static \STS\HeloEmail\Resources\Activity activity()
+ * @method static \STS\HeloEmail\Resources\Statistics statistics()
  * @method static array<mixed> request(string $method, string $path, array<string, mixed> $query = [], array<mixed>|null $json = null, array<string, string|null> $headers = [])
  *
  * @see HeloClient

@@ -4,9 +4,11 @@ namespace STS\HeloEmail;
 
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
+use STS\HeloEmail\Resources\Activity;
 use STS\HeloEmail\Resources\Broadcasts;
 use STS\HeloEmail\Resources\Channels;
 use STS\HeloEmail\Resources\Domains;
+use STS\HeloEmail\Resources\Statistics;
 use STS\HeloEmail\Resources\Suppressions;
 use STS\HeloEmail\Resources\Webhooks;
 
@@ -57,6 +59,16 @@ class HeloClient
     public function broadcasts(): Broadcasts
     {
         return new Broadcasts($this);
+    }
+
+    public function activity(): Activity
+    {
+        return new Activity($this);
+    }
+
+    public function statistics(): Statistics
+    {
+        return new Statistics($this);
     }
 
     /**
