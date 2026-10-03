@@ -15,8 +15,12 @@ Add these lines to `.env`:
 ```dotenv
 MAIL_MAILER=helo
 HELO_API_KEY=...
-HELO_CHANNEL_ID=...   # needed only when the key isn't limited to one channel
+HELO_CHANNEL_ID=...
 ```
+
+Each Helo API key belongs to one channel, so sending works without
+`HELO_CHANNEL_ID`. Set it to your key's channel anyway: Helo requires a channel
+ID for suppressions, broadcast lists, and new webhooks.
 
 You don't need to change `config/mail.php`. The package adds a `helo` mailer
 when your config doesn't define one.
@@ -207,8 +211,9 @@ channel, for apps that send for many customers.
 Helo::forChannel($tenant->helo_channel_id)->suppressions()->list();
 ```
 
-Suppressions, broadcast lists, and new webhooks need a channel. Pass
-`channelId:`, use `forChannel()`, or set `HELO_CHANNEL_ID`.
+Suppressions, broadcast lists, and new webhooks need a channel ID, even
+though your key already belongs to one channel. Pass `channelId:`, use
+`forChannel()`, or set `HELO_CHANNEL_ID`.
 
 **New parameters.** Methods that take named parameters also accept `extra:`,
 which is merged into the request. A new Helo parameter works before this package
