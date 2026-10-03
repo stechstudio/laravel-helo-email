@@ -8,6 +8,7 @@ use STS\HeloEmail\HeloClient;
 /**
  * @method static string|null channelId()
  * @method static HeloClient forChannel(?string $channelId)
+ * @method static \STS\HeloEmail\Resources\Send send()
  * @method static \STS\HeloEmail\Resources\Suppressions suppressions()
  * @method static \STS\HeloEmail\Resources\Webhooks webhooks()
  * @method static \STS\HeloEmail\Resources\Channels channels()

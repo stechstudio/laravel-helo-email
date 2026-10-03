@@ -8,6 +8,7 @@ use STS\HeloEmail\Resources\Activity;
 use STS\HeloEmail\Resources\Broadcasts;
 use STS\HeloEmail\Resources\Channels;
 use STS\HeloEmail\Resources\Domains;
+use STS\HeloEmail\Resources\Send;
 use STS\HeloEmail\Resources\Statistics;
 use STS\HeloEmail\Resources\Suppressions;
 use STS\HeloEmail\Resources\Webhooks;
@@ -34,6 +35,11 @@ class HeloClient
         $client->channelId = $channelId;
 
         return $client;
+    }
+
+    public function send(): Send
+    {
+        return new Send($this);
     }
 
     public function suppressions(): Suppressions
